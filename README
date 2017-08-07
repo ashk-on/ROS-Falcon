@@ -1,12 +1,13 @@
+Tested on Ubuntu 16.04
+
 1 - Download and install libnifalcon
-2 - Make sure udev permissions are set correctly. 
-	In ubunut 10.04 
+2 - Make sure udev permissions are set correctly.
 		- roscd rosfalcon
 		- sudo cp udev_rules/99-udev-novint.rules /etc/udev/rules.d
-		- unplug - replug falcon
-3 - compile rosfalcon
+		- Unplug the Faclon device, and plug it into the USB port again
+3 - compile rosfalcon package
+
+Run the falcon_node if you need to read the cartesian pose of the Falcon and want to render force on the end effector:
 
 Rosfalcon broadcasts the falcon position on /falconPos
-
-Rosfalcon subscribes to /falconForces topic to receive forces.
-
+Rosfalcon subscribes to /falconForces topic to receive forces

@@ -170,9 +170,9 @@ int main(int argc, char* argv[])
 
       //Publish ROS values
       rosfalcon::falconPos position;
-      position.X = Pos[0];
-      position.Y = Pos[1];
-      position.Z = Pos[2];
+      position.X = Pos[0] * 1000;
+      position.Y = Pos[1] * 1000;
+      position.Z = (Pos[2] * 1000) - 125;
       pub.publish(position);
       ros::spinOnce();
     }

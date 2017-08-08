@@ -5,6 +5,7 @@
 #include <math.h>
 
 #include "rosfalcon/falconSetPoint.h"
+#include <rosfalcon/falconPos.h>
 #include "std_msgs/Bool.h"
 
 #include "falcon/core/FalconDevice.h"
@@ -39,7 +40,6 @@ Index 0 is first falcon.
 **********************************************/
 
 bool init_falcon(int NoFalcon)
-
 {
   ROS_INFO("Setting up LibUSB");
   m_falconDevice.setFalconFirmware<FalconFirmwareNovintSDK>(); //Set Firmware
@@ -143,6 +143,7 @@ bool init_falcon(int NoFalcon)
 //Read falcon set point (requested coordinates)
 void get_setpoint(const rosfalcon::falconSetPoint::ConstPtr& point)
 {
+  //TODO change to set_setpoint
   std::array<double, 3> coords, LegAngles;
 
   //Get requested coordinates
@@ -220,6 +221,7 @@ bool runPID()
   }
 }
 
+//TODO publish position as well
 int main(int argc, char* argv[])
 {
   ros::init(argc,argv, "FalconCSPID");
@@ -250,7 +252,7 @@ int main(int argc, char* argv[])
   //Default location (Falcon will move to this position following homing)
   SetPoint[0] = 0;    //-0.065 <= X <= 0.065
   SetPoint[1] = 0;    //-0.065 <= Y <= 0.065
-  SetPoint[2] = 0.075; //0.0 <= Z <= 0.175
+  SetPoint[2] = 0.075; //0.075 <= Z <= 0.175
 
   int falcon_int;
   int atpos_count = 0;
@@ -264,6 +266,8 @@ int main(int argc, char* argv[])
 
     //Start publisher and subscriber
     ros::Publisher falcon_atpos_pub = node.advertise<std_msgs::Bool>("falcon_atpos", 1);
+    ros::Publisher falcon_pos_pub = node.advertise<rosfalcon::falconPos>("falconPos",10);
+
     ros::Subscriber setpoint_sub = node.subscribe("falcon_setpoint", 1, get_setpoint);
 
     while(node.ok())
@@ -288,6 +292,17 @@ int main(int argc, char* argv[])
           msg.data = atpos;
           falcon_atpos_pub.publish(msg);
         }
+
+        std::array<double, 3> Pos;
+        Pos = m_falconDevice.getPosition();
+
+        //Publish ROS values
+        rosfalcon::falconPos position;
+        // map values from meters to mm (Libnifalcon gives out values in meters)
+        position.X = Pos[0] * 1000;
+        position.Y = Pos[1] * 1000;
+        position.Z = (Pos[2] * 1000) - 125; //map z to -50 mm to 50 mm
+        falcon_pos_pub.publish(position);
       }
 
       loop_rate.sleep();

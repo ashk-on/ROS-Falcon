@@ -33,76 +33,83 @@ This function initialises the novint falcon controller
 NoFalcons is the index of the falcon which you wish to initialise
 Index 0 is first falcon.
 **********************************************/
-bool init_falcon( int NoFalcon)
+
+bool init_falcon(int NoFalcon)
 {
-  std::cout << "Setting up LibUSB" << std::endl;
+  ROS_INFO("Setting up LibUSB");
   m_falconDevice.setFalconFirmware<FalconFirmwareNovintSDK>(); //Set Firmware
-  if(!m_falconDevice.open(NoFalcon)) //Open falcon @ index 0  (index needed for multiple falcons, assuming only one connected)
+
+  //m_falconDevice.setFalconGrip<FalconGripFourButton>(); //Set Grip
+
+  if(!m_falconDevice.open(NoFalcon)) //Open falcon @ index
   {
-    std::cout << "Failed to find falcon" << std::endl;
+    ROS_ERROR("Failed to find Falcon");
     return false;
   }
   else
   {
-    std::cout << "Falcon Found" << std::endl;
+    ROS_INFO("Falcon Found");
   }
-  //**** From Barrow Mechanics - libnifalcon ******//
+
   //There's only one kind of firmware right now, so automatically set that.
   m_falconDevice.setFalconFirmware<FalconFirmwareNovintSDK>();
   //Next load the firmware to the device
 
   bool skip_checksum = false;
-	//See if we have firmware
-	bool firmware_loaded = false;
+  //See if we have firmware
+  bool firmware_loaded = false;
   firmware_loaded = m_falconDevice.isFirmwareLoaded();
+
   if(!firmware_loaded)
   {
-    std::cout << "Loading firmware" << std::endl;
+    ROS_INFO("Loading firmware");
     uint8_t* firmware_block;
     long firmware_size;
     {
       firmware_block = const_cast<uint8_t*>(NOVINT_FALCON_NVENT_FIRMWARE);
       firmware_size = NOVINT_FALCON_NVENT_FIRMWARE_SIZE;
-      for(int i = 0; i < 10; ++i)
+
+      for(int i = 0; i < 50; ++i)	//Attempt to load firmware 50 times
       {
         if(!m_falconDevice.getFalconFirmware()->loadFirmware(skip_checksum, NOVINT_FALCON_NVENT_FIRMWARE_SIZE, const_cast<uint8_t*>(NOVINT_FALCON_NVENT_FIRMWARE)))
         {
-          cout << "Firmware loading try failed" <<endl;
-				}
-				else
-				{
-					firmware_loaded = true;
-					break;
-				}
-			}
-		}
-	}
-	else if(!firmware_loaded)
-	{
-		std::cout << "No firmware loaded to device, and no firmware specified to load (--nvent_firmware, --test_firmware, etc...). Cannot continue" << std::endl;
-		return false;
-	}
-	if(!firmware_loaded || !m_falconDevice.isFirmwareLoaded())
-	{
-		std::cout << "No firmware loaded to device, cannot continue" << std::endl;
-		return false;
-	}
-	std::cout << "Firmware loaded" << std::endl;
-  //*****End of Barrow Mechancis *********//
+          ROS_ERROR("Firmware loading try failed");
+        }
+        else
+        {
+          firmware_loaded = true;
+          break;
+        }
+      }
+    }
+  }
 
-  //Set homing mode (keep track of encoders !needed!)
-  m_falconDevice.getFalconFirmware()->setHomingMode(true);
-  std::cout << "Homing Set" << std::endl;
-  std::array<int, 3> forces;
-  m_falconDevice.getFalconFirmware()->setForces(forces);
+  else if(!firmware_loaded)
+  {
+    ROS_ERROR("No firmware loaded to device, and no firmware specified to load (--nvent_firmware, --test_firmware, etc...). Cannot continue");
+    return false;
+  }
+
+  if(!firmware_loaded || !m_falconDevice.isFirmwareLoaded())
+  {
+    ROS_ERROR("No firmware loaded to device, cannot continue");
+    return false;
+  }
+  ROS_INFO("Firmware loaded");
+
+  m_falconDevice.getFalconFirmware()->setHomingMode(true); //Set homing mode (keep track of encoders !needed!)
+  ROS_INFO("Homing Set");
+  //std::array<double, 3> forces;
+
+  //m_falconDevice.getFalconFirmware()->setForces(forces);
   m_falconDevice.runIOLoop(); //read in data
 
   bool stop = false;
   bool homing = false;
   bool homing_reset = false;
   usleep(100000);
-  int tryLoad = 0;
-  while(!stop && tryLoad < 100)
+
+  while(!stop)
   {
     if(!m_falconDevice.runIOLoop()) continue;
     if(!m_falconDevice.getFalconFirmware()->isHomed())
@@ -110,20 +117,21 @@ bool init_falcon( int NoFalcon)
       if(!homing)
       {
         m_falconDevice.getFalconFirmware()->setLEDStatus(libnifalcon::FalconFirmware::RED_LED);
-        std::cout << "Falcon not currently homed. Move control all the way out then push straight all the way in." << std::endl;
+        ROS_INFO("Falcon not currently homed. Move control all the way out then push straight all the way in.");
       }
       homing = true;
     }
+
     if(homing && m_falconDevice.getFalconFirmware()->isHomed())
     {
       m_falconDevice.getFalconFirmware()->setLEDStatus(libnifalcon::FalconFirmware::BLUE_LED);
-      std::cout << "Falcon homed." << std::endl;
+      ROS_INFO("Falcon homed.");
       homing_reset = true;
       stop = true;
     }
-    tryLoad++;
   }
-  while(!m_falconDevice.runIOLoop());
+
+  m_falconDevice.runIOLoop();
   return true;
 }
 

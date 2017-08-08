@@ -147,6 +147,7 @@ void forceCallback(const rosfalcon::falconForcesConstPtr& msg)
 int main(int argc, char* argv[])
 {
   ros::init(argc,argv, "ROSfalcon");
+
   if(init_falcon(0))
   {
     std::cout << "Falcon Initialised Starting ROS Node" << std::endl;
@@ -158,6 +159,13 @@ int main(int argc, char* argv[])
 
     //Start ROS Publisher
     ros::Publisher pub = node.advertise<rosfalcon::falconPos>("falconPos",10);
+
+    //initial with these forces for gravity compenstion
+    std::array<double,3> garvity_comp_forces;
+    garvity_comp_forces[0] = 0;
+    garvity_comp_forces[1] = 0.5;
+    garvity_comp_forces[2] = 0;
+    m_falconDevice.setForce(garvity_comp_forces);
 
     while(node.ok())
     {
@@ -174,6 +182,7 @@ int main(int argc, char* argv[])
       position.Y = Pos[1] * 1000;
       position.Z = (Pos[2] * 1000) - 125;
       pub.publish(position);
+
       ros::spinOnce();
     }
     m_falconDevice.close();
